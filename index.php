@@ -241,7 +241,6 @@ foreach ($reminders as $reminder) {
 
             sendMail($reminder['AlertMessage'], $reminder['ToList'], $reminder['CCList'], $reminder['BCCList']);
 
-
             break;
 
         default:
@@ -255,10 +254,6 @@ foreach ($reminders as $reminder) {
  */
 function sendMail($msg, $to, $cc, $bcc)
 {   
-    print_r("Email send to: ".$to);
-    echo "<BR>";
-    print_r("Message: ".$msg);
-    echo "<BR>";
     // Build to recipient list
     $toRecipients = explode('|', $to);
     $to = '';
