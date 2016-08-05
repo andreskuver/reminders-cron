@@ -126,7 +126,6 @@ foreach ($reminders as $reminder) {
                 $nextAlert = date("Y-m-d H:i:s", strtotime($oldNextAlert. ' + 7 days'));
                 updateNextAlertAndRecurrenceIncrement($master, $reminder['AlertID'], 
                     $nextAlert, implode(':', array($weeksQty, $weekday)));
-                var_dump($nextAlert);var_dump(implode(':', array($weeksQty, $weekday)));
             }
             else{
                 setReminderInactive($master, $reminder['AlertID']);
@@ -153,9 +152,6 @@ foreach ($reminders as $reminder) {
             } else {
                 setReminderInactive($master, $reminder['AlertID']);
             }
-
-            print_r('NextAlert After: '.$nextAlert);
-            echo "<BR>";
 
             sendMail($reminder['AlertMessage'], $reminder['ToList'], $reminder['CCList'], $reminder['BCCList']);
 
