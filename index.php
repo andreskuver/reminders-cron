@@ -34,10 +34,31 @@ $prepared = $master->prepare($sql);
 $prepared->execute();
 $reminders = $prepared->fetchAll(\PDO::FETCH_ASSOC);
 
+// Not scheduled reminders
+if(count($reminders)== 0) {
+    print_r("Not reminders.");
+    die;
+}
+
 /* 
  * For each reminder, do action (send email ,etc.. ) and update
  */
 foreach ($reminders as $reminder) {
+
+    print_r('****************************');
+    echo "<BR>";
+    print_r('AlertID: '.$reminder['AlertID']);
+    echo "<BR>";
+    print_r('EndDate: '.$reminder['EndDate']);
+    echo "<BR>";
+    print_r('NextAlert: '.$reminder['NextAlert']);
+    echo "<BR>";
+    print_r('RecurrencePattern: '.$reminder['RecurrencePattern']);
+    echo "<BR>";
+    print_r('RecurrenceIncrement: '.$reminder['RecurrenceIncrement']);
+    echo "<BR>";
+    
+
     switch ($reminder['RecurrencePattern']){
 
         /*
@@ -99,17 +120,18 @@ foreach ($reminders as $reminder) {
             list($weeksQty, $weekday) = explode(":", $increment);
             $oldNextAlert = $reminder['NextAlert'];
 
-            $increment--;
+            $weeksQty--;
 
-            if($increment > 0) {
+            if($weeksQty > 0) {
                 $nextAlert = date("Y-m-d H:i:s", strtotime($oldNextAlert. ' + 7 days'));
-                updateNextAlertAndRecurrenceIncrement($master, $reminder['AlertID'], $nextAlert, $increment);
+                updateNextAlertAndRecurrenceIncrement($master, $reminder['AlertID'], 
+                    $nextAlert, implode(':', array($weeksQty, $weekday)));
+                var_dump($nextAlert);var_dump(implode(':', array($weeksQty, $weekday)));
             }
             else{
                 setReminderInactive($master, $reminder['AlertID']);
 
             }
-
             sendMail($reminder['AlertMessage'], $reminder['ToList'], $reminder['CCList'], $reminder['BCCList']);
 
             break;
@@ -131,6 +153,9 @@ foreach ($reminders as $reminder) {
             } else {
                 setReminderInactive($master, $reminder['AlertID']);
             }
+
+            print_r('NextAlert After: '.$nextAlert);
+            echo "<BR>";
 
             sendMail($reminder['AlertMessage'], $reminder['ToList'], $reminder['CCList'], $reminder['BCCList']);
 
@@ -234,7 +259,10 @@ foreach ($reminders as $reminder) {
  */
 function sendMail($msg, $to, $cc, $bcc)
 {   
-
+    print_r("Email send to: ".$to);
+    echo "<BR>";
+    print_r("Message: ".$msg);
+    echo "<BR>";
     // Build to recipient list
     $toRecipients = explode('|', $to);
     $to = '';
@@ -280,7 +308,8 @@ function updateNextAlert($master, $reminderID, $nextAlert)
     $sql = "UPDATE tblalerts SET NextAlert = :nextAlert WHERE AlertID = :reminderID";
     $prepared = $master->prepare($sql);
     $prepared->bindParam('reminderID',$reminderID);
-    $prepared->bindParam('nextAlert', $nextAlert, \PDO::PARAM_STR);
+    $prepared->bindParam('nextAlert', $nextAlert);
+
     return $prepared->execute();
 }
 
