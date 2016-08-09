@@ -26,8 +26,11 @@ $currentDate = date("Y-m-d H:i:s");
  *  Get all reminders with <nextAlarm date> less than or equals to now
  */
 $sql = 'SELECT AlertID, AlertName, AlertMessage, AlertType, StartDate, EndDate, AlertRecurrence,'
-        . ' RecurrencePattern, RecurrenceIncrement, NextAlert, LastSent, ToList, CCList, BCCList'
-        . ' FROM  tblAlerts WHERE'
+        . ' RecurrencePattern, RecurrenceIncrement, NextAlert, LastSent, ToList, CCList, BCCList,'
+        . ' ad.TheSubDomain as subdomain, ad.TheDomain as domain'
+        . ' FROM  tblAlerts '
+        . ' LEFT JOIN audex__domains ad USING(audexid)'
+        . ' WHERE'
         . " isactive = true AND NextAlert <= '" . $currentDate ."'";
 
 $prepared = $master->prepare($sql);
@@ -45,19 +48,13 @@ if(count($reminders)== 0) {
  */
 foreach ($reminders as $reminder) {
 
-    print_r('****************************');
-    echo "<BR>";
-    print_r('AlertID: '.$reminder['AlertID']);
-    echo "<BR>";
-    print_r('EndDate: '.$reminder['EndDate']);
-    echo "<BR>";
-    print_r('NextAlert: '.$reminder['NextAlert']);
-    echo "<BR>";
-    print_r('RecurrencePattern: '.$reminder['RecurrencePattern']);
-    echo "<BR>";
-    print_r('RecurrenceIncrement: '.$reminder['RecurrenceIncrement']);
-    echo "<BR>";
+    // For deployed app
+    // Build the partner URL for execute alarm actions
+    // Ex: partner.audex360.com/cron/:alertId
+    $actionURL = 'http://' . $reminder['subdomain'] . '.'. $reminder['domain'] . 'com' . '/cron/' . $reminder['AlertID'];
     
+    // For local test uncomment this line and comment the url action for deploy
+    //$actionURL = 'http://locala360' . '/cron/' . $reminder['AlertID'];
 
     switch ($reminder['RecurrencePattern']){
 
@@ -69,7 +66,6 @@ foreach ($reminders as $reminder) {
              * Once Time Alarm:
              *  Send email and set the alarm inactive
              */
-            sendMail($reminder['AlertMessage'], $reminder['ToList'], $reminder['CCList'], $reminder['BCCList']);
             setReminderInactive($master, $reminder['AlertID']);
             break;
 
@@ -92,7 +88,6 @@ foreach ($reminders as $reminder) {
             else
                updateNextAlert($master, $reminder['AlertID'], $nextAlert);
 
-            sendMail($reminder['AlertMessage'], $reminder['ToList'], $reminder['CCList'], $reminder['BCCList']);
             break;
 
         /*
@@ -108,7 +103,6 @@ foreach ($reminders as $reminder) {
                 setReminderInactive($master, $reminder['AlertID']);
             else
                updateNextAlert($master, $reminder['AlertID'], $nextAlert);
-            sendMail($reminder['AlertMessage'], $reminder['ToList'], $reminder['CCList'], $reminder['BCCList']);
 
             break;
 
@@ -131,7 +125,6 @@ foreach ($reminders as $reminder) {
                 setReminderInactive($master, $reminder['AlertID']);
 
             }
-            sendMail($reminder['AlertMessage'], $reminder['ToList'], $reminder['CCList'], $reminder['BCCList']);
 
             break;
 
@@ -153,7 +146,6 @@ foreach ($reminders as $reminder) {
                 setReminderInactive($master, $reminder['AlertID']);
             }
 
-            sendMail($reminder['AlertMessage'], $reminder['ToList'], $reminder['CCList'], $reminder['BCCList']);
 
             break;
 
@@ -190,7 +182,6 @@ foreach ($reminders as $reminder) {
                 setReminderInactive($master, $reminder['AlertID']);
             }
 
-            sendMail($reminder['AlertMessage'], $reminder['ToList'], $reminder['CCList'], $reminder['BCCList']);
 
             break;
 
@@ -205,7 +196,6 @@ foreach ($reminders as $reminder) {
             else
                updateNextAlert($master, $reminder['AlertID'], $nextAlert);
 
-            sendMail($reminder['AlertMessage'], $reminder['ToList'], $reminder['CCList'], $reminder['BCCList']);
 
             break;
 
@@ -239,49 +229,16 @@ foreach ($reminders as $reminder) {
             else
                updateNextAlert($master, $reminder['AlertID'], $nextAlert);
 
-            sendMail($reminder['AlertMessage'], $reminder['ToList'], $reminder['CCList'], $reminder['BCCList']);
 
             break;
 
         default:
+            setReminderInactive($master, $reminder['AlertID']);
             break;
-    }
-}
 
-/*  
- *
- *
- */
-function sendMail($msg, $to, $cc, $bcc)
-{   
-    // Build to recipient list
-    $toRecipients = explode('|', $to);
-    $to = '';
-    foreach ($toRecipients as $recipient) {
-        $to .= $recipient . ',';
     }
 
-    // Build cc recipient list
-    $ccRecipients = explode('|', $cc);
-    $cc = '';
-    foreach ($ccRecipients as $recipient) {
-        $cc .= $recipient . ',';
-    }
-
-    // Build bcc recipient list
-    $bccRecipients = explode('|', $bcc);
-    $bcc = '';
-    foreach ($bccRecipients as $recipient) {
-        $bcc .= $recipient . ',';
-    }
-
-    // Build headers
-    $headers = 'From: webmaster@example.com '. "\r\n"
-            .'Cc: ' . $cc . "\r\n" 
-            .'Bcc: ' . $bcc . "\r\n";
-
-    // Send email
-    mail($to, "My subject", $msg, $headers);
+    file_get_contents($actionURL);
 }
 
 /*
